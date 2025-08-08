@@ -48,6 +48,14 @@ class NCrypto {
     /* Empty Constructor */
     constructor(){}
 
+    /**
+     * Get Type Name
+     * @returns {string} Type Name
+     */
+    static get Name(){
+        return `NCrypto Base`;
+    }
+
     // #region PKCS7 Paddings
     /**
      * PKCS#7 Padding
@@ -342,6 +350,14 @@ class NCryptoAES extends NCrypto {
     }
 
     /**
+     * Get Type Name
+     * @returns {string} Type Name
+     */
+    static get Name(){
+        return `NCrypto AES`;
+    }
+
+    /**
      * Encrypt Bytes Array
      * @param {bytes} decryptedData Decrypted Bytes Array 
      * @returns {bytes} Encrypted Bytes Array
@@ -441,7 +457,16 @@ class NCryptoECB extends NCrypto {
      * @param {Array} key Encryption Key 
      */
     constructor(key) {
+        super();
         this._aes = new NCryptoAES(key);
+    }
+
+    /**
+     * Get Type Name
+     * @returns {string} Type Name
+     */
+    static get Name(){
+        return `NCrypto ECB`;
     }
 
     /**
@@ -509,6 +534,14 @@ class NCryptoCBC extends NCrypto {
 
         this._lastCipherblock = this._coerceArray(iv, true);
         this._aes = new NCryptoAES(key);
+    }
+
+    /**
+     * Get Type Name
+     * @returns {string} Type Name
+     */
+    static get Name(){
+        return `NCrypto CBC`;
     }
 
     /**
@@ -592,6 +625,14 @@ class NCryptoCFB extends NCrypto {
     }
 
     /**
+     * Get Type Name
+     * @returns {string} Type Name
+     */
+    static get Name(){
+        return `NCrypto CFB`;
+    }
+
+    /**
      * Encrypt Decrypted Bytes
      * @param {bytes} decryptedData Decrypted Bytes
      * @returns {bytes} Encrypted Bytes
@@ -667,6 +708,14 @@ class NCryptoOFB extends NCrypto {
     }
 
     /**
+     * Get Type Name
+     * @returns {string} Type Name
+     */
+    static get Name(){
+        return `NCrypto OFB`;
+    }
+
+    /**
      * Encrypt Decrypted Bytes
      * @param {bytes} decryptedData Decrypted Bytes
      * @returns {bytes} Encrypted Bytes
@@ -714,6 +763,14 @@ class NCryptoCounter extends NCrypto {
         } else {
             this.SetBytes(initialValue);
         }
+    }
+
+    /**
+     * Get Type Name
+     * @returns {string} Type Name
+     */
+    static get Name(){
+        return `NCrypto Counter`;
     }
 
     /**
@@ -789,6 +846,14 @@ class NCryptoCTR extends NCrypto {
     }
 
     /**
+     * Get Type Name
+     * @returns {string} Type Name
+     */
+    static get Name(){
+        return `NCrypto CTR`;
+    }
+
+    /**
      * Encrypt Decrypted Bytes
      * @param {bytes} decryptedData Decrypted Bytes
      * @returns {bytes} Encrypted Bytes
@@ -832,6 +897,14 @@ class NCryptoMD5 {
     constructor(text){
         if(!text) text = "";
         this.#text = unescape(encodeURIComponent(text));
+    }
+
+    /**
+     * Get Type Name
+     * @returns {string} Type Name
+     */
+    static get Name(){
+        return `NCrypto MD5`;
     }
 
     /**
