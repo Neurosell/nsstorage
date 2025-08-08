@@ -1044,6 +1044,69 @@ class NEncryptor {
      */
     get Options() { return this.options }
 
+    /**
+     * Encrypt Text to UTF8 Bytes Array / HEX string
+     * @param {string|bytes} decryptedData Decrypted String / UTF8 Bytes
+     * @param {boolean} returnBytes Return Bytes or HEX String
+     * @returns {string|bytes} Return Encrypted HEX / UTF8 Bytes
+     */
+    Encrypt(decryptedData, returnBytes = false){
+        let self = this;
+
+        // Create Encryptor
+        const encryptor = self.#getEncryptor();
+        
+        // Get Decrypted Bytes
+        if(!decryptedData) throw new Error("Failed to encrypt data. Decrypted data is not defined");
+        if(typeof decryptedData == "object") throw new Error("This method is not allow object encryption. Please, use EncryptObject method instead");
+        const decryptedBytes = (typeof decryptedData == "string") ? encryptor._textToBytes(decryptedData) : decryptedData;
+        
+        // Encrypt Data
+        const encryptedBytes = encryptor.Encrypt(decryptedBytes);
+        return (returnBytes) ? encryptedBytes : encryptor._bytesToHex(encryptedBytes);
+    }
+
+    /**
+     * Encrypt Object to HEX String
+     * @param {object} decryptedObject Decrypted Object
+     * @returns {string} Encrypted HEX string
+     */
+    EncryptObject(decryptedObject){
+        return this.Encrypt(JSON.stringify(decryptedObject));
+    }
+
+    /**
+     * Decrypt Text from HEX string / UTF-8 Bytes Array
+     * @param {string|bytes} encryptedData Encrypted HEX String / UTF8 Bytes 
+     * @param {boolean} returnBytes Return UTF8 Decrypted Bytes or string
+     * @returns {string|bytes} Return Decrypted text / UTF8 Bytes
+     */
+    Decrypt(encryptedData, returnBytes = false){
+        let self = this;
+
+        // Create Encryptor
+        const encryptor = self.#getEncryptor();
+
+        // Get Encrypted Bytes
+        if(!encryptedData) throw new Error("Failed to decrypt data. Encrypted data is not defined");
+        const encryptedBytes = (typeof encryptedData == "string") ? encryptor._hexToBytes(encryptedData) : encryptedData;
+
+        // Decrypt Data
+        const decryptedBytes = encryptor.Decrypt(encryptedBytes);
+        return (returnBytes) ? decryptedBytes : encryptor._bytesToText(decryptedBytes);
+    }
+
+    /**
+     * Decrypt Object from HEX String
+     * @param {string} encryptedData Encrypted HEX String of Object
+     * @returns {object}
+     */
+    DecryptObject(encryptedData) {
+        let decryptedData = this.Decrypt(encryptedData);
+        return JSON.parse(decryptedData);
+    }
+
+    // #region Private Methods
     #prepareKey(key){
         // Prepare Key
         let self = this;
@@ -1093,85 +1156,66 @@ class NEncryptor {
 
         return self.#encryptor;
     }
-
-    /**
-     * Encrypt Text to UTF8 Bytes Array / HEX string
-     * @param {string|bytes} decryptedData Decrypted String / UTF8 Bytes
-     * @param {boolean} returnBytes Return Bytes or HEX String
-     * @returns {string|bytes} Return Encrypted HEX / UTF8 Bytes
-     */
-    Encrypt(decryptedData, returnBytes = false){
-        let self = this;
-
-        // Create Encryptor
-        const encryptor = self.#getEncryptor();
-        
-        // Get Decrypted Bytes
-        if(!decryptedData) throw new Error("Failed to encrypt data. Decrypted data is not defined");
-        if(typeof decryptedData == "object") throw new Error("This method is not allow object encryption. Please, use EncryptObject method instead");
-        const decryptedBytes = (typeof decryptedData == "string") ? encryptor._textToBytes(decryptedData) : decryptedData;
-        
-        // Encrypt Data
-        const encryptedBytes = encryptor.Encrypt(decryptedBytes);
-        return (returnBytes) ? encryptedBytes : encryptor._bytesToHex(encryptedBytes);
-    }
-
-
-    /**
-     * Encrypt Object to HEX String
-     * @param {object} decryptedObject Decrypted Object
-     * @returns {string} Encrypted HEX string
-     */
-    EncryptObject(decryptedObject){
-        return this.Encrypt(JSON.stringify(decryptedObject));
-    }
-
-    /**
-     * Decrypt Text from HEX string / UTF-8 Bytes Array
-     * @param {string|bytes} encryptedData Encrypted HEX String / UTF8 Bytes 
-     * @param {boolean} returnBytes Return UTF8 Decrypted Bytes or string
-     * @returns {string|bytes} Return Decrypted text / UTF8 Bytes
-     */
-    Decrypt(encryptedData, returnBytes = false){
-        let self = this;
-
-        // Create Encryptor
-        const encryptor = self.#getEncryptor();
-
-        // Get Encrypted Bytes
-        if(!encryptedData) throw new Error("Failed to decrypt data. Encrypted data is not defined");
-        const encryptedBytes = (typeof encryptedData == "string") ? encryptor._hexToBytes(encryptedData) : encryptedData;
-
-        // Decrypt Data
-        const decryptedBytes = encryptor.Decrypt(encryptedBytes);
-        return (returnBytes) ? decryptedBytes : encryptor._bytesToText(decryptedBytes);
-    }
-
-    /**
-     * Decrypt Object from HEX String
-     * @param {string} encryptedData Encrypted HEX String of Object
-     * @returns {object}
-     */
-    DecryptObject(encryptedData) {
-        let decryptedData = this.Decrypt(encryptedData);
-        return JSON.parse(decryptedData);
-    }
+    // #endregion
 }
 
 /**
  * NStorage Secured Field
  */
 class NSecuredField {
+    // Private Fields
+    #encryptor = null;
+    #currentValue = null;
+    #isObject = false;
 
-    get(){
+    /**
+     * NSecured Field Constructor
+     * @param {any} defaultValue Default Value for Secured Field
+     * @param {NEncryptor} encryptor Encryptor for Secured Field
+     * @param {string} encryptionKey Encryption key (If not Provided Encryptor)
+     */
+    constructor(defaultValue = null, encryptor = null, encryptionKey = null){
+        if(encryptor && !(encryptor instanceof NEncryptor)) throw new Error(`Secured Field Encryptor must be instance of NEncryptor`);
+        if(!encryptor && !encryptionKey) throw new Error(`Failed to create Secured Field. No provided encryption key`);
+        this.#encryptor = (!encryptor) ? new NEncryptor(encryptionKey) : encryptor;
+        this.#currentValue = this.#getEncryptedValue(defaultValue);
+    }
 
+    // #region Value Methods
+    /**
+     * Get Value
+     * @returns {any} Return Decrypted Value for Secured Field
+     */
+    get Value(){
+        return this.#getDecryptedValue(this.#currentValue);
     }
     
-    set(val){
-
+    /**
+     * Set new Value
+     * @param {any} newValue New Raw Value for Secured Field 
+     */
+    set Value(newValue){
+        this.#currentValue = this.#getEncryptedValue(newValue);
     }
 
+    /**
+     * Get Encrypted Value
+     */
+    get EncryptedValue(){
+        return this.#currentValue;
+    }
+    // #endregion
 
+    // #region Private Methods
+    #getEncryptedValue(value){
+        this.#isObject = (typeof value == "string") ? false : true;
+        return (this.#isObject) ? this.#encryptor.EncryptObject(value) : this.#encryptor.Encrypt(value);
+    }
+
+    #getDecryptedValue(encrypted){
+        return (this.#isObject) ? this.#encryptor.DecryptObject(encrypted) : this.#encryptor.Decrypt(encrypted);
+    }
+    // #endregion
 }
 
 /**
