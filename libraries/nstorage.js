@@ -226,6 +226,11 @@ class NCrypto {
         return result.join('');
     }
 
+    _textToHex(text){
+        let bytes = this._textToBytes(text);
+        return this._bytesToHex(bytes);
+    }
+
     _convertToInt32(bytes) {
         var result = [];
         for (var i = 0; i < bytes.length; i += 4) {
@@ -1003,6 +1008,488 @@ class NCryptoMD5 {
 }
 
 /**
+ * NStorage Device Fingerptint Class
+ */
+class NDeviceFingerprint {
+    // Private Fields
+    #fingerprint = null;
+
+    /**
+     * Get Current Device Fingerprint
+     * @returns {NDeviceFingerprint} New Browser Fingerprint {Key: string, Data: object, UUID: number }
+     */
+    static GetDeviceFingerprint(){
+        const fingerprint = new NDeviceFingerprint();
+        return fingerprint.Current;
+    }
+
+    /**
+     * Get Current Browser Data
+     * @returns {object} Current Browser Data { Name: string, Version: string, MajorVersion: number }
+     */
+    static GetBrowserData(){
+        let browserData = { Name: "Unknown", Version: "Unknown", MajorVersion: null };
+
+        // Navigator Data Collect
+        let nVer = navigator.appVersion;
+        let nAgt = navigator.userAgent;
+        let browser = navigator.appName;
+        let version = '' + parseFloat(nVer);
+        let nameOffset, verOffset, ix;
+
+        // Yandex Browser
+		if ((verOffset = nAgt.indexOf('YaBrowser')) != -1) {
+			browser = 'Yandex';
+			version = nAgt.substring(verOffset + 10);
+		}
+		// Samsung Browser
+		else if ((verOffset = nAgt.indexOf('SamsungBrowser')) != -1) {
+			browser = 'Samsung';
+			version = nAgt.substring(verOffset + 15);
+		}
+		// UC Browser
+		else if ((verOffset = nAgt.indexOf('UCBrowser')) != -1) {
+			browser = 'UC Browser';
+			version = nAgt.substring(verOffset + 10);
+		}
+        // Opera Next
+        else if ((verOffset = nAgt.indexOf('OPR')) != -1) {
+            browser = 'Opera';
+            version = nAgt.substring(verOffset + 4);
+        }
+        // Opera
+        else if ((verOffset = nAgt.indexOf('Opera')) != -1) {
+            browser = 'Opera';
+            version = nAgt.substring(verOffset + 6);
+            if ((verOffset = nAgt.indexOf('Version')) != -1) {
+                version = nAgt.substring(verOffset + 8);
+            }
+        }
+        // Legacy Edge
+        else if ((verOffset = nAgt.indexOf('Edge')) != -1) {
+            browser = 'Microsoft Legacy Edge';
+            version = nAgt.substring(verOffset + 5);
+        } 
+        // Edge (Chromium)
+        else if ((verOffset = nAgt.indexOf('Edg')) != -1) {
+            browser = 'Microsoft Edge';
+            version = nAgt.substring(verOffset + 4);
+        }
+        // MSIE
+        else if ((verOffset = nAgt.indexOf('MSIE')) != -1) {
+            browser = 'Microsoft Internet Explorer';
+            version = nAgt.substring(verOffset + 5);
+        }
+        // Chrome
+        else if ((verOffset = nAgt.indexOf('Chrome')) != -1) {
+            browser = 'Chrome';
+            version = nAgt.substring(verOffset + 7);
+        }
+        // Safari
+        else if ((verOffset = nAgt.indexOf('Safari')) != -1) {
+            browser = 'Safari';
+            version = nAgt.substring(verOffset + 7);
+            if ((verOffset = nAgt.indexOf('Version')) != -1) {
+                version = nAgt.substring(verOffset + 8);
+            }
+        }
+        // Firefox
+        else if ((verOffset = nAgt.indexOf('Firefox')) != -1) {
+            browser = 'Firefox';
+            version = nAgt.substring(verOffset + 8);
+        }
+        // MSIE 11+
+        else if (nAgt.indexOf('Trident/') != -1) {
+            browser = 'Microsoft Internet Explorer';
+            version = nAgt.substring(nAgt.indexOf('rv:') + 3);
+        }
+        // Other browsers
+        else if ((nameOffset = nAgt.lastIndexOf(' ') + 1) < (verOffset = nAgt.lastIndexOf('/'))) {
+            browser = nAgt.substring(nameOffset, verOffset);
+            version = nAgt.substring(verOffset + 1);
+            if (browser.toLowerCase() == browser.toUpperCase()) {
+                browser = navigator.appName;
+            }
+        }
+
+        // trim the version string
+        if ((ix = version.indexOf(';')) != -1) version = version.substring(0, ix);
+        if ((ix = version.indexOf(' ')) != -1) version = version.substring(0, ix);
+        if ((ix = version.indexOf(')')) != -1) version = version.substring(0, ix);
+
+        let majorVersion = parseInt('' + version, 10);
+        if (isNaN(majorVersion)) {
+            version = '' + parseFloat(nVer);
+            majorVersion = parseInt(nVer, 10);
+        }
+
+        browserData.Name = browser;
+        browserData.Version = version;
+        browserData.MajorVersion = majorVersion;
+        return browserData;
+    }
+    
+    /**
+     * Get Screen Info
+     * @returns {object} Screen Data Object {Width: number, Height: number, Resolution: string, ColorDepth: number }
+     */
+    static GetScreenInfo(){
+        let screenData = { Width: 0, Height: 0, Resolution: "", ColorDepth: 0 };
+        if(screen?.width){
+            screenData.Width = screen.width;
+            screenData.Height = screen.height;
+            screenData.Resolution = `${screenData.Width}x${screenData.Height}`;
+        }
+        if(screen?.colorDepth){
+            screenData.ColorDepth = screen.colorDepth;
+        }
+        return screenData;
+    }
+
+    /**
+     * Get Features List
+     * @returns {object} Current Device HTML5 Features Input
+     */
+    static GetFeaturesList(){
+        const win = window;
+        const doc = document;
+
+        // Features Checker
+        const featureChecker = {
+            canvas: !!doc.createElement('canvas').getContext,
+            canvasText: function(){
+                let canvas = doc.createElement('canvas');
+			    return (!!canvas.getContext) && (typeof canvas.getContext('2d').fillText === 'function');
+            },
+            video: !!doc.createElement('video').canPlayType,
+            audio: !!doc.createElement('audio').canPlayType,
+            localStorage: ('localStorage' in win) && win['localStorage'] !== null,
+            offline: !!win.applicationCache,
+            geolocation: !!win.navigator.geolocation,
+            inputType: function(inputType){
+                let input = doc.createElement('input');
+                input.setAttribute('type', inputType);
+                return input.type === inputType;
+            },
+            placeholder: 'placeholder' in doc.createElement('input'),
+            autofocus: 'autofocus' in doc.createElement('input')
+        }
+
+        // Return Features List
+        return {
+            Canvas: featureChecker.canvas,
+            CanvasText: featureChecker.canvasText(),
+            Video: featureChecker.video,
+            Audio: featureChecker.audio,
+            LocalStorage: featureChecker.localStorage,
+            Offline: featureChecker.offline,
+            Geolocation: featureChecker.geolocation,
+            Placeholder: featureChecker.placeholder,
+            Autofocus: featureChecker.autofocus,
+            SearchInput: featureChecker.inputType('search'),
+            NumberInput: featureChecker.inputType('number'),
+            RangeInput: featureChecker.inputType('range'),
+            ColorInput: featureChecker.inputType('color'),
+            PhoneInput: featureChecker.inputType('tel'),
+            UrlInput: featureChecker.inputType('url'),
+            EmailInput: featureChecker.inputType('email'),
+            DateInput: featureChecker.inputType('date'),
+            DateTimeInput: featureChecker.inputType('datetime'),
+            MonthInput: featureChecker.inputType('month'),
+            WeekInput: featureChecker.inputType('week'),
+            TimeInput: featureChecker.inputType('time'),
+            DateTimeLocalInput: featureChecker.inputType('datetime-local'),
+            Microphone: !!doc.getItems
+        };
+    }
+
+    /**
+     * Get Current OS Info
+     * @returns {object} Current OS Data { Name: string, Version: string }
+     */
+    static GetOSInfo(){
+        let osData = { Name: "Unknown", Version: "Unknown" };
+
+        // Get OS Name
+        let os = "Unknown";
+        let clientStrings = [
+            {s:'Windows 10', r:/(Windows 10.0|Windows NT 10.0)/},
+            {s:'Windows 8.1', r:/(Windows 8.1|Windows NT 6.3)/},
+            {s:'Windows 8', r:/(Windows 8|Windows NT 6.2)/},
+            {s:'Windows 7', r:/(Windows 7|Windows NT 6.1)/},
+            {s:'Windows Vista', r:/Windows NT 6.0/},
+            {s:'Windows Server 2003', r:/Windows NT 5.2/},
+            {s:'Windows XP', r:/(Windows NT 5.1|Windows XP)/},
+            {s:'Windows 2000', r:/(Windows NT 5.0|Windows 2000)/},
+            {s:'Windows ME', r:/(Win 9x 4.90|Windows ME)/},
+            {s:'Windows 98', r:/(Windows 98|Win98)/},
+            {s:'Windows 95', r:/(Windows 95|Win95|Windows_95)/},
+            {s:'Windows NT 4.0', r:/(Windows NT 4.0|WinNT4.0|WinNT|Windows NT)/},
+            {s:'Windows CE', r:/Windows CE/},
+            {s:'Windows 3.11', r:/Win16/},
+            {s:'Android', r:/Android/},
+            {s:'Open BSD', r:/OpenBSD/},
+            {s:'Sun OS', r:/SunOS/},
+            {s:'Chrome OS', r:/CrOS/},
+            {s:'Linux', r:/(Linux|X11(?!.*CrOS))/},
+            {s:'iOS', r:/(iPhone|iPad|iPod)/},
+            {s:'Mac OS X', r:/Mac OS X/},
+            {s:'Mac OS', r:/(Mac OS|MacPPC|MacIntel|Mac_PowerPC|Macintosh)/},
+            {s:'QNX', r:/QNX/},
+            {s:'UNIX', r:/UNIX/},
+            {s:'BeOS', r:/BeOS/},
+            {s:'OS/2', r:/OS\/2/},
+            {s:'Search Bot', r:/(nuhk|Googlebot|Yammybot|Openbot|Slurp|MSNBot|Ask Jeeves\/Teoma|ia_archiver)/}
+        ];
+        for (var id in clientStrings) {
+            var cs = clientStrings[id];
+            if (cs.r.test(window.userAgent)) {
+                os = cs.s;
+                break;
+            }
+        }
+
+        // Get OS Version
+        let osVersion = "Unknown";
+        if (/Windows/.test(os)) {
+            osVersion = /Windows (.*)/.exec(os)[1];
+        	if (osVersion == 10 && navigator.userAgentData) {
+                navigator.userAgentData.getHighEntropyValues(["platformVersion"])
+                	.then((ua) => window.jscd.osVersion = (parseInt(ua.platformVersion.split('.')[0]) < 13 ? 10 : 11));
+            }
+            os = 'Windows';
+        }
+
+        /* For Other OS */
+        switch (os) {
+            case 'Mac OS':
+            case 'Mac OS X':
+            case 'Android':
+                osVersion = /(?:Android|Mac OS|Mac OS X|MacPPC|MacIntel|Mac_PowerPC|Macintosh) ([\.\_\d]+)/.exec(nAgt)[1];
+                break;
+            case 'iOS':
+                osVersion = /OS (\d+)_(\d+)_?(\d+)?/.exec(nVer);
+                osVersion = osVersion[1] + '.' + osVersion[2] + '.' + (osVersion[3] | 0);
+                break;
+        }
+
+        osData.Name = os;
+        osData.Version = osVersion;
+        return osData;
+    }
+
+    /**
+     * Get WebGL Features
+     * @returns {Array} WebGL Features List
+     */
+    static GetWebGLFeatures(){
+        try{
+            let canvas = createElement('canvas');
+            let ctx = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            let exts = ctx.getSupportedExtensions();
+            return exts;
+        }catch(ex){
+            return [];
+        }
+    }
+
+    /**
+     * Return Data Fingerprint
+     * @returns {string} Canvas Fingerprint HEX String
+     */
+    static GetCanvasFingerprint(){
+        try{
+            let dataURL = null;
+            let canvas = document.createElement('canvas');
+            let ctx = canvas.getContext('2d');
+            let txt = 'CANVAS_FINGERPRINT';
+            ctx.textBaseline = "top";
+            ctx.font = "14px 'Arial'";
+            ctx.textBaseline = "alphabetic";
+            ctx.fillStyle = "#f60";
+            ctx.fillRect(125,1,62,20);
+            ctx.fillStyle = "#069";
+            ctx.fillText(txt, 2, 15);
+            ctx.fillStyle = "rgba(102, 204, 0, 0.7)";
+            ctx.fillText(txt, 4, 17);
+            dataURL = canvas.toDataURL();
+            return new NCryptoMD5(dataURL).GetHEX();
+        }catch(ex){
+            return null;
+        }
+    }
+
+    /**
+     * Mobile Version Checking
+     * @returns {boolean} Is Mobile
+     */
+    static get IsMobile(){
+        let isMobile = false;
+
+        // Check from User Agent
+        (function(a){if(/(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino|android|ipad|playbook|silk/i.test(a)||/1207|6310|6590|3gso|4thp|50[1-6]i|770s|802s|a wa|abac|ac(er|oo|s\-)|ai(ko|rn)|al(av|ca|co)|amoi|an(ex|ny|yw)|aptu|ar(ch|go)|as(te|us)|attw|au(di|\-m|r |s )|avan|be(ck|ll|nq)|bi(lb|rd)|bl(ac|az)|br(e|v)w|bumb|bw\-(n|u)|c55\/|capi|ccwa|cdm\-|cell|chtm|cldc|cmd\-|co(mp|nd)|craw|da(it|ll|ng)|dbte|dc\-s|devi|dica|dmob|do(c|p)o|ds(12|\-d)|el(49|ai)|em(l2|ul)|er(ic|k0)|esl8|ez([4-7]0|os|wa|ze)|fetc|fly(\-|_)|g1 u|g560|gene|gf\-5|g\-mo|go(\.w|od)|gr(ad|un)|haie|hcit|hd\-(m|p|t)|hei\-|hi(pt|ta)|hp( i|ip)|hs\-c|ht(c(\-| |_|a|g|p|s|t)|tp)|hu(aw|tc)|i\-(20|go|ma)|i230|iac( |\-|\/)|ibro|idea|ig01|ikom|im1k|inno|ipaq|iris|ja(t|v)a|jbro|jemu|jigs|kddi|keji|kgt( |\/)|klon|kpt |kwc\-|kyo(c|k)|le(no|xi)|lg( g|\/(k|l|u)|50|54|\-[a-w])|libw|lynx|m1\-w|m3ga|m50\/|ma(te|ui|xo)|mc(01|21|ca)|m\-cr|me(rc|ri)|mi(o8|oa|ts)|mmef|mo(01|02|bi|de|do|t(\-| |o|v)|zz)|mt(50|p1|v )|mwbp|mywa|n10[0-2]|n20[2-3]|n30(0|2)|n50(0|2|5)|n7(0(0|1)|10)|ne((c|m)\-|on|tf|wf|wg|wt)|nok(6|i)|nzph|o2im|op(ti|wv)|oran|owg1|p800|pan(a|d|t)|pdxg|pg(13|\-([1-8]|c))|phil|pire|pl(ay|uc)|pn\-2|po(ck|rt|se)|prox|psio|pt\-g|qa\-a|qc(07|12|21|32|60|\-[2-7]|i\-)|qtek|r380|r600|raks|rim9|ro(ve|zo)|s55\/|sa(ge|ma|mm|ms|ny|va)|sc(01|h\-|oo|p\-)|sdk\/|se(c(\-|0|1)|47|mc|nd|ri)|sgh\-|shar|sie(\-|m)|sk\-0|sl(45|id)|sm(al|ar|b3|it|t5)|so(ft|ny)|sp(01|h\-|v\-|v )|sy(01|mb)|t2(18|50)|t6(00|10|18)|ta(gt|lk)|tcl\-|tdg\-|tel(i|m)|tim\-|t\-mo|to(pl|sh)|ts(70|m\-|m3|m5)|tx\-9|up(\.b|g1|si)|utst|v400|v750|veri|vi(rg|te)|vk(40|5[0-3]|\-v)|vm40|voda|vulc|vx(52|53|60|61|70|80|81|83|85|98)|w3c(\-| )|webc|whit|wi(g |nc|nw)|wmlb|wonu|x700|yas\-|your|zeto|zte\-/i.test(a.substr(0,4))) isMobile = true;})(navigator.userAgent||navigator.vendor||window.opera);
+        
+        // Check from Navigator Option
+        if(!isMobile && navigator?.userAgentData?.mobile) isMobile = true;
+
+        // By Screen Orientation and Screen Size
+        if(!isMobile && typeof screen?.orientation !== 'undefined' && (screen.width <= 800)) isMobile = true;
+
+
+        return isMobile;
+    }
+
+    /**
+     * Check Cookies Enabled
+     * @returns {boolean} Cookies Enabled State
+     */
+    static get HasCookies(){
+        // cookie
+        let cookieEnabled = (navigator.cookieEnabled) ? true : false;
+        if (typeof navigator.cookieEnabled == 'undefined' && !cookieEnabled) {
+            document.cookie = 'testcookie';
+            cookieEnabled = (document.cookie.indexOf('testcookie') != -1) ? true : false;
+        }
+        return cookieEnabled;
+    }
+
+    /**
+     * Get UUID by Fingerprint Data
+     * @param {object} data Fingerprint Data 
+     * @returns {string} UUID
+     */
+    static GetUUID(data){
+        let finalUUID = [];
+        let crypto = new NCrypto();
+        /*
+        UserAgent: navigator.userAgent,
+            Browser: NDeviceFingerprint.GetBrowserData(),
+            ScreenInfo: NDeviceFingerprint.GetScreenInfo(),
+            IsMobile: NDeviceFingerprint.IsMobile,
+            HasCookies: NDeviceFingerprint.HasCookies,
+            OSData: NDeviceFingerprint.GetOSInfo(),
+            Language: navigator?.language ?? null,
+            Timezone: Intl?.DateTimeFormat()?.resolvedOptions()?.timeZone,
+            TimezoneOffset: new Date().getTimezoneOffset / 60,
+            DeviceMemory: navigator?.deviceMemory ?? null,
+            DoNotTrack: navigator?.doNotTrack ?? null,
+            MimeTypes: navigator?.mimeTypes ?? null,
+            Plugins: navigator?.plugins ?? null,
+            HTMLFeatures: NDeviceFingerprint.GetFeaturesList() ?? null,
+            WebGLFeatures: NDeviceFingerprint.GetWebGLFeatures() ?? [],
+            CanvasFingerprint: NDeviceFingerprint.GetCanvasFingerprint() ?? []
+        */
+
+       // UAgent
+       if(data?.UserAgent) {
+        finalUUID.push(`${crypto._textToHex(data?.userAgent ?? "0")}`);
+       }else finalUUID.push(0);
+
+       // Browser
+       if(data.Browser){
+        finalUUID.push(`${crypto._textToHex(data?.Browser?.Name?.toString() ?? "0")}${crypto._textToHex(data?.Browser?.Version?.toString() ?? "0")}${crypto._textToHex(data?.Browser?.MajorVersion?.toString() ?? "0")}`);
+       }else finalUUID.push(0);
+
+       // Screen Info
+       if(data.ScreenInfo){
+        finalUUID.push(`${crypto._textToHex((data?.ScreenInfo?.Width + data?.ScreenInfo?.Height)?.toString() ?? "")}${crypto._textToHex(data?.ScreenInfo?.Resolution ?? "0")}${crypto._textToHex(data?.ScreenInfo?.ColorDepth?.toString() ?? "0")}`);
+       }else finalUUID.push(0);
+
+       // Mobile and Cookies
+       finalUUID.push(crypto._textToHex(data?.IsMobile?.toString() ?? "0"));
+       finalUUID.push(crypto._textToHex(data?.HasCookies.toString() ?? "0"));
+       
+       // OS Data
+       if(data.OSData){
+        finalUUID.push(`${crypto._textToHex(data.OSData.Name.toString())}${crypto._textToHex(data.OSData.Version.toString())}`);
+       }else finalUUID.push(0);
+
+       // Language and Other Simple Parameters
+       finalUUID.push(crypto._textToHex(data?.Language?.toString() ?? "0"));
+       finalUUID.push(crypto._textToHex(data?.Timezone?.toString() ?? "0"));
+       finalUUID.push(crypto._textToHex(data?.TimezoneOffset?.toString() ?? "0"));
+       finalUUID.push(crypto._textToHex(data?.DeviceMemory?.toString() ?? "0"));
+       finalUUID.push(crypto._textToHex(data?.DoNotTrack?.toString() ?? "0"));
+       finalUUID.push(crypto._textToHex(data?.MimeTypes?.length?.toString() ?? "0"));
+       finalUUID.push(crypto._textToHex(data?.Plugins?.length?.toString() ?? "0"));
+       finalUUID.push(crypto._textToHex(data?.WebGLFeatures?.length?.toString() ?? "0"));
+       finalUUID.push(data?.CanvasFingerprint ?? "0");
+       return finalUUID.join("-");
+    }
+
+    /**
+     * Device Fingerptint Constructor
+     */
+    constructor(){
+        this.#fingerprint = this.#generateFingerprint();
+    }
+
+    /**
+     * Get Current Fingerprint
+     */
+    get Current(){
+        return this.#fingerprint;
+    }
+
+    /**
+     * Device Fingerprint Key
+     */
+    get Key(){
+        return this.#fingerprint.Key;
+    }
+
+    /**
+     * Device Fingerprint Data
+     */
+    get Data(){
+        return this.#fingerprint.Data;
+    }
+
+    /**
+     * Device Fingerprint UUID
+     */
+    get UUID(){
+        return this.#fingerprint.UUID;
+    }
+
+    // #region Private Methods
+    #generateFingerprint(){
+        // Fingerprint Data
+        const Data = {
+            UserAgent: navigator.userAgent,
+            Browser: NDeviceFingerprint.GetBrowserData(),
+            ScreenInfo: NDeviceFingerprint.GetScreenInfo(),
+            IsMobile: NDeviceFingerprint.IsMobile,
+            HasCookies: NDeviceFingerprint.HasCookies,
+            OSData: NDeviceFingerprint.GetOSInfo(),
+            Language: navigator?.language ?? null,
+            Timezone: Intl?.DateTimeFormat()?.resolvedOptions()?.timeZone,
+            TimezoneOffset: new Date().getTimezoneOffset / 60,
+            DeviceMemory: navigator?.deviceMemory ?? null,
+            DoNotTrack: navigator?.doNotTrack ?? null,
+            MimeTypes: navigator?.mimeTypes ?? null,
+            Plugins: navigator?.plugins ?? null,
+            HTMLFeatures: NDeviceFingerprint.GetFeaturesList() ?? null,
+            WebGLFeatures: NDeviceFingerprint.GetWebGLFeatures() ?? [],
+            CanvasFingerprint: NDeviceFingerprint.GetCanvasFingerprint() ?? []
+        };
+
+        // Fingerprint Key
+        const UUID = NDeviceFingerprint.GetUUID(Data);
+        const Key = new NCryptoMD5(JSON.stringify(Data)).GetHEX();
+        const FinalKey = new NCryptoMD5(`${UUID}.${Key}`).GetHEX();
+
+        // Return Device Fingerprint
+        return {
+            Key: FinalKey,
+            Data: Data,
+            UUID: UUID
+        };
+    }
+    // #endregion
+}
+
+/**
  * NStorage Enctryptor Class
  */
 class NEncryptor {
@@ -1223,6 +1710,10 @@ class NSecuredField {
  * Create your Secured Local Storage by Few Lines of Code
  */
 class NStorage {
+    // Private Fields
+    #options = null;
+    #encryptor = null;
+
     /**
      * Storage Constructor
      * @param {object} options Storage Options 
@@ -1230,12 +1721,18 @@ class NStorage {
     constructor(options = {}){
         /* Setup Default Options */
         const defaultOptions = {
-
+            Encryptor: new NEncryptor(NDeviceFingerprint.GetDeviceFingerprint().Key, { Mode: NEncryptor.Mode.CTR }),
+            CheckDeviceFingerprint: true
         };
         
         /* Setup Storage Fields */
-        this._options = {...defaultOptions, ...options};
-        this._currentKey = null;
+        this.#options = {...defaultOptions, ...options};
+
+        /* Check and Store Encryptor */
+        if(!this.#options?.Encryptor || !(this.#options.Encryptor instanceof NEncryptor)){
+            throw new Error(`Failed to Create NStorage Instance. Encryptor must be instance of NEncryptor Class`);
+        }
+        this.#encryptor = this.#options.Encryptor;
 
         /* Setup Storage Events*/
     }
