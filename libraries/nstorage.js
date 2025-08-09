@@ -1361,24 +1361,6 @@ class NDeviceFingerprint {
     static GetUUID(data){
         let finalUUID = [];
         let crypto = new NCrypto();
-        /*
-        UserAgent: navigator.userAgent,
-            Browser: NDeviceFingerprint.GetBrowserData(),
-            ScreenInfo: NDeviceFingerprint.GetScreenInfo(),
-            IsMobile: NDeviceFingerprint.IsMobile,
-            HasCookies: NDeviceFingerprint.HasCookies,
-            OSData: NDeviceFingerprint.GetOSInfo(),
-            Language: navigator?.language ?? null,
-            Timezone: Intl?.DateTimeFormat()?.resolvedOptions()?.timeZone,
-            TimezoneOffset: new Date().getTimezoneOffset / 60,
-            DeviceMemory: navigator?.deviceMemory ?? null,
-            DoNotTrack: navigator?.doNotTrack ?? null,
-            MimeTypes: navigator?.mimeTypes ?? null,
-            Plugins: navigator?.plugins ?? null,
-            HTMLFeatures: NDeviceFingerprint.GetFeaturesList() ?? null,
-            WebGLFeatures: NDeviceFingerprint.GetWebGLFeatures() ?? [],
-            CanvasFingerprint: NDeviceFingerprint.GetCanvasFingerprint() ?? []
-        */
 
        // UAgent
        if(data?.UserAgent) {
