@@ -1711,60 +1711,78 @@ class NSecuredField {
  */
 class NStorage {
     // Private Fields
-    #options = null;
     #encryptor = null;
 
     /**
      * Storage Constructor
      * @param {object} options Storage Options 
      */
-    constructor(options = {}){
-        /* Setup Default Options */
-        const defaultOptions = {
-            Encryptor: new NEncryptor(NDeviceFingerprint.GetDeviceFingerprint().Key, { Mode: NEncryptor.Mode.CTR }),
-            CheckDeviceFingerprint: true
-        };
-        
-        /* Setup Storage Fields */
-        this.#options = {...defaultOptions, ...options};
-
+    constructor(encryptor = new NEncryptor(NDeviceFingerprint.GetDeviceFingerprint().Key, { Mode: NEncryptor.Mode.CTR })){
         /* Check and Store Encryptor */
-        if(!this.#options?.Encryptor || !(this.#options.Encryptor instanceof NEncryptor)){
+        if(!encryptor || !(encryptor instanceof NEncryptor)){
             throw new Error(`Failed to Create NStorage Instance. Encryptor must be instance of NEncryptor Class`);
         }
-        this.#encryptor = this.#options.Encryptor;
+        this.#encryptor = encryptor;
 
         /* Setup Storage Events*/
+        this.OnStorageUpdated = function(){};
+        this.OnStorageCleaned = function(){};
     }
 
     /**
-     * Get Curretn Storage Configuration
+     * Save Data to Encrypted Storage
+     * @param {string} itemName Item Name
+     * @param {object} value Item Value
      */
-    get Options(){
-        return this._options;
-    }
-
     SetItem(itemName, value){
-
+        let keyName = this.#encryptor.Encrypt(itemName);
+        let val = this.#encryptor.EncryptObject(value);
+        localStorage.setItem(keyName, val);
     }
 
+    /**
+     * Get Item by Item Name
+     * @param {string} itemName Item Name 
+     * @param {object} defaultValue Default Value if Item is Not Found
+     * @returns {object|null} Decrypted Data or null
+     */
     GetItem(itemName, defaultValue = null){
-
+        let keyName = this.#encryptor.Encrypt(itemName);
+        let encryptedData = localStorage.getItem(keyName);
+        if(!encryptedData) return defaultValue;
+        let val = this.#encryptor.DecryptObject(encryptedData);
+        return val;
     }
 
+    /**
+     * Check if Item is Exists
+     * @param {string} itemName Item Name
+     * @returns {boolean} Has Item or not
+     */
     HasItem(itemName){
-
+        let keyName = this.#encryptor.Encrypt(itemName);
+        return (localStorage.getItem(keyName) === null) ? false : true;
     }
 
+    /**
+     * Remove Item Name
+     * @param {string} itemName Item Name
+     */
     RemoveItem(itemName){
-
+        let keyName = this.#encryptor.Encrypt(itemName);
+        localStorage.removeItem(keyName);
+        this.OnStorageUpdated();
     }
 
+    /**
+     * Clear Secured Storage
+     */
     ClearStorage(){
-
+        localStorage.clear();
+        this?.OnStorageCleaned();
     }
 
-    UpdateEncryptionKey(newKey){
+    #getKeyName(){
 
     }
 }
