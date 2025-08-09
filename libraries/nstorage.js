@@ -1781,8 +1781,4 @@ class NStorage {
         localStorage.clear();
         this?.OnStorageCleaned();
     }
-
-    #getKeyName(){
-
-    }
 }
