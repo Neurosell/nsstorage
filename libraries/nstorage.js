@@ -1434,16 +1434,26 @@ class NDeviceFingerprint {
         return this.#fingerprint.UUID;
     }
 
+    /**
+     * Get Device Name
+     * @constructor
+     */
+    get Name(){
+        return this.#fingerprint.Name;
+    }
+
     // #region Private Methods
     #generateFingerprint(){
         // Fingerprint Data
+        const OSData = NDeviceFingerprint.GetOSInfo();
+        const BrowserData = NDeviceFingerprint.GetBrowserData();
         const Data = {
             UserAgent: navigator.userAgent,
-            Browser: NDeviceFingerprint.GetBrowserData(),
+            Browser: BrowserData,
             ScreenInfo: NDeviceFingerprint.GetScreenInfo(),
             IsMobile: NDeviceFingerprint.IsMobile,
             HasCookies: NDeviceFingerprint.HasCookies,
-            OSData: NDeviceFingerprint.GetOSInfo(),
+            OSData: OSData,
             Language: navigator?.language ?? null,
             Timezone: Intl?.DateTimeFormat()?.resolvedOptions()?.timeZone,
             TimezoneOffset: new Date().getTimezoneOffset / 60,
@@ -1460,12 +1470,14 @@ class NDeviceFingerprint {
         const UUID = NDeviceFingerprint.GetUUID(Data);
         const Key = new NCryptoMD5(JSON.stringify(Data)).GetHEX();
         const FinalKey = new NCryptoMD5(`${UUID}.${Key}`).GetHEX();
+        const DeviceName = `${OSData?.Name ?? "Unknown OS"} (${BrowserData?.Name ?? "Unknown Browser"} ${BrowserData?.Version?.toString() ?? ""})`;
 
         // Return Device Fingerprint
         return {
             Key: FinalKey,
             Data: Data,
-            UUID: UUID
+            UUID: UUID,
+            Name: DeviceName
         };
     }
     // #endregion
