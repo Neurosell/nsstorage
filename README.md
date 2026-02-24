@@ -1,3 +1,5 @@
+> **Warning!** This repository is deprecated. Please, use [SecuredTS](https://github.com/Neurosell/SecuredTS) instead.
+
 # NS Storage
 <img src="https://github.com/Neurosell/nsstorage/blob/develop/visual/header.png?raw=true" alt="NS Storage - cross-platform secured storage and field with device fingerprinting library for web applications" style="width: 100%" /><br/>
 
